@@ -1,12 +1,11 @@
 package com.example.adeogo.scratch;
 
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -112,8 +111,6 @@ public class EditorActivity extends AppCompatActivity {
         int petGender = mGender;
         int petWeight = Integer.parseInt(mWeightEditText.getText().toString().trim());
 
-        SQLiteDatabase db = mDbHelper.getWritableDatabase();
-
         ContentValues values = new ContentValues();
 
         values.put(PetEntry.COLUMN_PET_NAME, petName);
@@ -121,17 +118,16 @@ public class EditorActivity extends AppCompatActivity {
         values.put(PetEntry.COLUMN_PET_GENDER, petGender);
         values.put(PetEntry.COLUMN_PET_WEIGHT, petWeight);
 
-        long newRowId = db.insert(PetEntry.TABLE_NAME, null, values);
-        Log.v("RowId", "" + newRowId);
-        if(newRowId == -1){
-            Toast toast = Toast.makeText(this, "Error with saving pet", Toast.LENGTH_SHORT );
+        Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
+        if (newUri == null) {
+            Toast toast = Toast.makeText(this, getString(R.string.editor_insert_pet_failed), Toast.LENGTH_SHORT);
+            toast.show();
+        } else {
+            Toast toast = Toast.makeText(this, getString(R.string.editor_insert_pet_successful), Toast.LENGTH_SHORT);
             toast.show();
         }
-        else {
-            Toast toast = Toast.makeText(this, "The Id of the new pet is:" + newRowId, Toast.LENGTH_SHORT);
-            toast.show();
-        }
-}
+
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

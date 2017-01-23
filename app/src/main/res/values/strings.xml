@@ -7,7 +7,7 @@
     <string name="unit_pet_weight">kg</string>
     <string name="hint_pet_weight">Weight</string>
     <string name="hint_pet_breed">Breed</string>
-    <string name="hint_pet_name">Name</string>
+    <string name="editor_insert_pet_failed">Error with saving pet</string>
     <string name="category_measurement">Measurement</string>
     <string name="category_gender">Gender</string>
     <string name="category_overview">Overview</string>
@@ -16,4 +16,13 @@
     <string name="editor_activity_title_new_pet">Add a Pet</string>
     <string name="action_delete_all_entries">Delete All Pets</string>
     <string name="action_insert_dummy_data">Insert Dummy Data</string>
+    <string name="hint_pet_name">Name</string>
+    <!-- Toast message in editor when new pet has been successfully inserted [CHAR LIMIT=NONE] -->
+    <string name="editor_insert_pet_successful">Pet saved</string>
+    <!-- Toast message in editor when new pet has failed to be inserted [CHAR LIMIT=NONE] -->
+    <string name="insert_dummy_pet_successful">Dummy Pet Inserted </string>
+    <!-- Title text for the empty view, which describes the empty dog house image [CHAR LIMIT=50] -->
+    <string name="empty_view_title_text">It\'s a bit lonely here...</string>
+    <!-- Subtitle text for the empty view that prompts the user to add a pet [CHAR LIMIT=50] -->
+    <string name="empty_view_subtitle_text">Get started by adding a pet</string>
 </resources>
