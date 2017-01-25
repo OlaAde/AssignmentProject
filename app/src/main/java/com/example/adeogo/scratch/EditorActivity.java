@@ -1,15 +1,15 @@
 package com.example.adeogo.scratch;
 
+import android.app.LoaderManager;
 import android.content.ContentValues;
+import android.content.CursorLoader;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.app.LoaderManager;
 import android.support.v4.app.NavUtils;
-import android.content.CursorLoader;
-import android.content.Loader;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -28,7 +28,7 @@ import com.example.adeogo.scratch.data.PetDbHelper;
 
 public class EditorActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
-    Uri currentPetUri;
+    private Uri currentPetUri;
     Boolean mPetHasCanged = false;
     /**
      * Database helper that will provide us access to the database
@@ -59,7 +59,18 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
      * Gender of the pet. The possible values are:
      * 0 for unknown gender, 1 for male, 2 for female.
      */
-    private int mGender = 0;
+    private int mGender = PetEntry.GENDER_UNKNOWN;
+
+    /**
+     * Setting Up the onTouchListener
+     */
+    private View.OnTouchListener mOnTouchListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            mPetHasCanged = true;
+            return false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,41 +96,41 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         currentPetUri = editPetIntent.getData();
 
         if (currentPetUri == null) {
+            // This is a new pet, so change the app bar to say "Add a Pet"
             setTitle(R.string.editor_activity_title_new_pet);
+
+            // Invalidate the options menu, so the "Delete" menu option can be hidden.
+            // (It doesn't make sense to delete a pet that hasn't been created yet.)
+            invalidateOptionsMenu();
         } else {
             setTitle(R.string.editor_activity_title_edit_pet);
+
+            // Prepare the loader.  Either re-connect with an existing one,
+            // or start a new one.
+            getLoaderManager().initLoader(0, null, this);
         }
 
-        // Prepare the loader.  Either re-connect with an existing one,
-        // or start a new one.
-        getLoaderManager().initLoader(0, null, this);
+
     }
 
-    /**
-     *  Setting Up the onTouchListener
-     */
-    private View.OnTouchListener mOnTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            mPetHasCanged = true;
-            return false;
-        }
-    };
 
-    private void showUnsavedChangesDialog(DialogInterface.OnClickListener discardButtonClickListener){
+    private void showUnsavedChangesDialog(DialogInterface.OnClickListener discardButtonClickListener) {
         // Here we create an AlertDialog.Builder and set the message, and set the click listeners
         // for the positive and negative buttons on the dialog.
 
         AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
         alertBuilder.setMessage(R.string.alert_dialog_message);
+
+        // The nature of this affirmative is going to be determined where it is called.
+        //"The stuff in onClick"
         alertBuilder.setPositiveButton(R.string.alert_dialog_affirmative, discardButtonClickListener);
-        alertBuilder.setNegativeButton(R.string.alert_dialog_negative, new  DialogInterface.OnClickListener(){
+        alertBuilder.setNegativeButton(R.string.alert_dialog_negative, new DialogInterface.OnClickListener() {
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 // User clicked the "Keep editing" button, so dismiss the dialog
                 // and continue editing the pet.
-                if(dialog != null){
+                if (dialog != null) {
                     dialog.dismiss();
                 }
             }
@@ -130,9 +141,9 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     }
 
     @Override
-    public void onBackPressed(){
+    public void onBackPressed() {
         // If the pet hasn't changed, continue with handling back button press
-        if(!mPetHasCanged){
+        if (!mPetHasCanged) {
             super.onBackPressed();
             return;
         }
@@ -150,7 +161,6 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
 
         showUnsavedChangesDialog(discardButtonClickListener);
     }
-
 
     /**
      * Setup the dropdown spinner that allows the user to select the gender of the pet.
@@ -194,13 +204,18 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     private void savePet() {
         String petName = mNameEditText.getText().toString().trim();
         String petBreed = mBreedEditText.getText().toString().trim();
-        int petGender = mGender;
         String weightString = mWeightEditText.getText().toString().trim();
 
-        if(currentPetUri == null&& TextUtils.isEmpty(petName) && TextUtils.isEmpty(petBreed)
-                && TextUtils.isEmpty(weightString) && mGender == PetEntry.GENDER_UNKNOWN){
+        if (currentPetUri == null && TextUtils.isEmpty(petName) && TextUtils.isEmpty(petBreed)
+                && TextUtils.isEmpty(weightString) && mGender == PetEntry.GENDER_UNKNOWN) {
             return;
         }
+
+
+        ContentValues values = new ContentValues();
+        values.put(PetEntry.COLUMN_PET_NAME, petName);
+        values.put(PetEntry.COLUMN_PET_BREED, petBreed);
+        values.put(PetEntry.COLUMN_PET_GENDER, mGender);
 
         // If the weight is not provided by the user, don't try to parse the string into an
         // integer value. Use 0 by default.
@@ -208,15 +223,9 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         if (!TextUtils.isEmpty(weightString)) {
             petWeight = Integer.parseInt(weightString);
         }
-
-        ContentValues values = new ContentValues();
-
-        values.put(PetEntry.COLUMN_PET_NAME, petName);
-        values.put(PetEntry.COLUMN_PET_BREED, petBreed);
-        values.put(PetEntry.COLUMN_PET_GENDER, petGender);
         values.put(PetEntry.COLUMN_PET_WEIGHT, petWeight);
 
-        if (currentPetUri == null){
+        if (currentPetUri == null) {
             Uri newUri = getContentResolver().insert(PetEntry.CONTENT_URI, values);
 
             if (newUri == null) {
@@ -226,10 +235,8 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 Toast toast = Toast.makeText(this, getString(R.string.editor_insert_pet_successful), Toast.LENGTH_SHORT);
                 toast.show();
             }
-        }
-
-        else {
-            int updatedPet = getContentResolver().update(currentPetUri,values,null,null);
+        } else {
+            int updatedPet = getContentResolver().update(currentPetUri, values, null, null);
             if (updatedPet == 0) {
                 Toast toast = Toast.makeText(this, getString(R.string.editor_edit_pet_failed), Toast.LENGTH_SHORT);
                 toast.show();
@@ -240,6 +247,55 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         }
     }
 
+    private void showDeleteConfirmationDialog() {
+        // Create an AlertDialog.Builder and set the message, and click listeners
+        // for the positive and negative buttons on the dialog.
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.delete_dialog_msg);
+        builder.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User clicked the "Delete" button, so delete the pet.
+                deletePet();
+            }
+        });
+        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // User clicked the "Cancel" button, so dismiss the dialog
+                // and continue editing the pet.
+                if (dialog != null) {
+                    dialog.dismiss();
+                }
+            }
+        });
+
+        // Create and show the AlertDialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    /**
+     * Perform the deletion of the pet in the database.
+     */
+    private void deletePet() {
+        if (currentPetUri != null) {
+
+                    int numRowsDeleted = getContentResolver().delete(currentPetUri, null, null);
+
+                    if (numRowsDeleted == 0) {
+                        Toast toast = Toast.makeText(EditorActivity.this, getString(R.string.editor_delete_pet_failed), Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+                    else {
+                        Toast toast = Toast.makeText(EditorActivity.this, getString(R.string.editor_delete_pet_successful), Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+            finish();
+                }
+
+
+
+        }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu options from the res/menu/menu_editor.xml file.
@@ -248,6 +304,17 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         return true;
     }
 
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+
+        // If this is a new pet, hide the "Delete" menu item.
+        if (currentPetUri == null) {
+            MenuItem menuItem = menu.findItem(R.id.action_delete);
+            menuItem.setVisible(false);
+        }
+        return true;
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -263,14 +330,13 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 return true;
             // Respond to a click on the "Delete" menu option
             case R.id.action_delete:
-                // Do nothing for now
+                showDeleteConfirmationDialog();
                 return true;
             // Respond to a click on the "Up" arrow button in the app bar
             case android.R.id.home:
                 // If the pet hasn't changed, continue with navigating up to parent activity
                 // which is the {@link CatalogActivity}.
-                if(!mPetHasCanged)
-                {
+                if (!mPetHasCanged) {
                     // Navigate back to parent activity (CatalogActivity)
                     NavUtils.navigateUpFromSameTask(EditorActivity.this);
                     return true;
@@ -300,6 +366,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
+
         // Since the editor shows all pet attributes, define a projection that contains
         // all columns from the pet table
         String[] projection = {
@@ -307,9 +374,14 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 PetEntry.COLUMN_PET_NAME,
                 PetEntry.COLUMN_PET_BREED,
                 PetEntry.COLUMN_PET_GENDER,
-                PetEntry.COLUMN_PET_WEIGHT };
+                PetEntry.COLUMN_PET_WEIGHT};
 
-        return new CursorLoader(this, currentPetUri, projection, null, null, null);
+        return new CursorLoader(EditorActivity.this,// Parent activity context
+                currentPetUri,// Query the content URI for the current pet
+                projection, // Columns to include in the resulting Cursor
+                null,  // No selection clause
+                null,  // No selection arguments
+                null);   // Default sort order
     }
 
     @Override
