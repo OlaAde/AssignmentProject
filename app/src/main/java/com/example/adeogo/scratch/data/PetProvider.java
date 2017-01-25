@@ -10,8 +10,6 @@ import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import static android.R.attr.name;
-
 /**
  * Created by Adeogo on 1/16/2017.
  */
@@ -102,6 +100,7 @@ public class PetProvider extends ContentProvider {
                 throw new IllegalArgumentException("Cannot query unknown URI " + uri);
 
         }
+        cursor.setNotificationUri(getContext().getContentResolver(), uri);
         return cursor;
     }
 
@@ -110,7 +109,7 @@ public class PetProvider extends ContentProvider {
     public String getType(Uri uri) {
         final int match = sUriMatcher.match(uri);
 
-        switch (match){
+        switch (match) {
             case PETS:
                 return PetContract.PetEntry.CONTENT_LIST_TYPE;
             case PET_ID:
@@ -167,6 +166,9 @@ public class PetProvider extends ContentProvider {
 
         long newRowId = database.insert(PetContract.PetEntry.TABLE_NAME, null, values);
 
+        // notify all listeners of changes:
+        getContext().getContentResolver().notifyChange(uri, null);
+
         // If the ID is -1, then the insertion failed. Log an error and return null.
         if (newRowId == -1) {
             Log.e(LOG_TAG, "Failed to insert row for " + uri);
@@ -183,31 +185,50 @@ public class PetProvider extends ContentProvider {
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
         final int match = sUriMatcher.match(uri);
+
+        int numRowsDeleted;
         switch (match) {
             case PETS:
+                // notify all listeners of changes:
+                getContext().getContentResolver().notifyChange(uri, null);
+
                 // Delete all rows that match the selection and selection args
-                return database.delete(PetContract.PetEntry.TABLE_NAME, selection, selectionArgs);
+                numRowsDeleted = database.delete(PetContract.PetEntry.TABLE_NAME, selection, selectionArgs);
+                break;
             case PET_ID:
                 // Delete a single row given by the ID in the URI
                 selection = PetContract.PetEntry._ID + "=?";
-                selectionArgs = new String[] { String.valueOf(ContentUris.parseId(uri)) };
-                return database.delete(PetContract.PetEntry.TABLE_NAME, selection, selectionArgs);
+                selectionArgs = new String[]{String.valueOf(ContentUris.parseId(uri))};
+                numRowsDeleted = database.delete(PetContract.PetEntry.TABLE_NAME, selection, selectionArgs);
+
+                break;
             default:
                 throw new IllegalArgumentException("Deletion is not supported for " + uri);
+
+
         }
+
+        if (numRowsDeleted != 0){
+            // If 1 or more rows were deleted, then notify all listeners that the data at the
+            // given URI has changed
+            getContext().getContentResolver().notifyChange(uri,null);
+        }
+        // Return the number of rows deleted
+        return numRowsDeleted;
     }
+
 
     @Override
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         final int match = sUriMatcher.match(uri);
-        switch (match){
+        switch (match) {
 
             case PETS:
-                   return updatePet(uri, values,selection,selectionArgs );
+                return updatePet(uri, values, selection, selectionArgs);
             case PET_ID:
                 selection = PetContract.PetEntry._ID + "=?";
-                selectionArgs = new String[] { String.valueOf(ContentUris.parseId(uri))};
-                return updatePet(uri, values,selection,selectionArgs );
+                selectionArgs = new String[]{String.valueOf(ContentUris.parseId(uri))};
+                return updatePet(uri, values, selection, selectionArgs);
 
             default:
                 throw new IllegalArgumentException("Insertion is not supported for " + uri);
@@ -215,21 +236,21 @@ public class PetProvider extends ContentProvider {
         }
     }
 
-    private int updatePet (Uri uri, ContentValues values, String selection, String[] selectionArgs){
+    private int updatePet(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         // If the {@link PetEntry#COLUMN_PET_NAME} key is present,
         // check that the name value is not null.
-        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_NAME)){
+        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_NAME)) {
             // Check that the name is not null
             String name = values.getAsString(PetContract.PetEntry.COLUMN_PET_NAME);
 
-            if ( name == null) {
+            if (name == null) {
                 throw new IllegalArgumentException("Pet requires a name");
             }
         }
 
         // If the {@link PetEntry#COLUMN_PET_GENDER} key is present,
         // check that the gender value is valid.
-        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_WEIGHT)){
+        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_WEIGHT)) {
             // If the weight is provided, check that it's greater than or equal to 0 kg
             Integer weight = values.getAsInteger(PetContract.PetEntry.COLUMN_PET_WEIGHT);
 
@@ -238,14 +259,13 @@ public class PetProvider extends ContentProvider {
             }
         }
 
-        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_GENDER)){
+        if (values.containsKey(PetContract.PetEntry.COLUMN_PET_GENDER)) {
             Integer gender = values.getAsInteger(PetContract.PetEntry.COLUMN_PET_GENDER);
 
             if (gender == null || !PetContract.PetEntry.isValidGender(gender)) {
                 throw new IllegalArgumentException("Pet requires valid gender");
             }
         }
-
 
 
         // No need to check the breed, any value is valid (including null).
@@ -257,8 +277,12 @@ public class PetProvider extends ContentProvider {
 
         SQLiteDatabase database = mDbHelper.getWritableDatabase();
 
-        int numOfRowsChanged = database.update(PetContract.PetEntry.TABLE_NAME,values,selection,selectionArgs);
+        int numOfRowsChanged = database.update(PetContract.PetEntry.TABLE_NAME, values, selection, selectionArgs);
 
+        if (numOfRowsChanged != 0) {
+            // notify all listeners of changes:
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
         return numOfRowsChanged;
     }
 }
