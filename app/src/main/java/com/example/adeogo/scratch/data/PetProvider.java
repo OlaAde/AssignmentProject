@@ -208,10 +208,10 @@ public class PetProvider extends ContentProvider {
 
         }
 
-        if (numRowsDeleted != 0){
+        if (numRowsDeleted != 0) {
             // If 1 or more rows were deleted, then notify all listeners that the data at the
             // given URI has changed
-            getContext().getContentResolver().notifyChange(uri,null);
+            getContext().getContentResolver().notifyChange(uri, null);
         }
         // Return the number of rows deleted
         return numRowsDeleted;
