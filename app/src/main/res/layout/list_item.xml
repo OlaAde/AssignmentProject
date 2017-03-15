@@ -11,7 +11,8 @@
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
         android:textAppearance="?android:textAppearanceMedium"
-        android:textColor="#2B3D4D"  />
+        android:textColor="#2B3D4D"
+        android:text="Product Name"/>
 
     <TextView
         android:id="@+id/summary"
@@ -19,5 +20,6 @@
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif"
         android:textAppearance="?android:textAppearanceSmall"
-        android:textColor="#AEB6BD"  />
+        android:textColor="#AEB6BD"
+        android:text="Product Name"/>
 </LinearLayout>
